@@ -18,8 +18,11 @@ theme = "PaperMod"
   home = ["HTML", "RSS", "JSON"]
   page = ["HTML"]
   section = ["HTML", "RSS"]
-
-# 导航栏必须加“search”项，否则搜索不会显示
+  
+[params.taxonomy]
+  showTermCount = true
+  
+# 导航栏
 [menu]
   [[menu.main]]
     identifier = "categories"
