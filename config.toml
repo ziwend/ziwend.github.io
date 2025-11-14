@@ -16,6 +16,8 @@ theme = "PaperMod"
 # 自动生成搜索 index.json
 [outputs]
   home = ["HTML", "RSS", "JSON"]
+  page = ["HTML"]
+  section = ["HTML", "RSS"]
 
 # 代码高亮
 [markup]
