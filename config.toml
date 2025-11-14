@@ -22,6 +22,11 @@ theme = "PaperMod"
 # 导航栏必须加“search”项，否则搜索不会显示
 [menu]
   [[menu.main]]
+    identifier = "categories"
+    name = "分类"
+    url = "/categories/"
+    weight = 5
+  [[menu.main]]
     identifier = "search"
     name = "搜索"
     url = "/search/"
