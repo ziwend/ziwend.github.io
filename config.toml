@@ -4,11 +4,31 @@ defaultContentLanguage = "zh"
 title = "我的技术博客"
 theme = "PaperMod"
 
+# 分类和标签配置
+[taxonomies]
+  category = "categories"
+  tag = "tags"
+  series = "series"
+
+# 每页显示的文章数量
+paginate = 10
+
 # 开启目录（TOC）
 [params]
   ShowToc = true
   TocOpen = true
+  
+  # 分类页面显示设置
+  [params.taxonomy]
+    showTermCount = true
+    showTermList = true
 
+  # 文章页面显示分类和标签
+  [params.article]
+    showCategories = true
+    showTags = true
+    showDate = true
+	
 # —— 站内搜索方案（PaperMod 内置） ——
 # 默认使用 "Fuse.js" 搜索
   search = true
@@ -18,9 +38,6 @@ theme = "PaperMod"
   home = ["HTML", "RSS", "JSON"]
   page = ["HTML"]
   section = ["HTML", "RSS"]
-  
-[params.taxonomy]
-  showTermCount = true
   
 # 导航栏
 [menu]

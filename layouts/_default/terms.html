@@ -1,0 +1,17 @@
+{{ define "main" }}
+<article class="post-entry">
+    <header class="entry-header">
+        <h1>分类</h1>
+    </header>
+
+    <div class="entry-content">
+        <ul>
+        {{ range .Data.Terms.Alphabetical }}
+            <li>
+                <a href="{{ .Page.Permalink }}">{{ .Page.Title }} ({{ .Count }})</a>
+            </li>
+        {{ end }}
+        </ul>
+    </div>
+</article>
+{{ end }}
