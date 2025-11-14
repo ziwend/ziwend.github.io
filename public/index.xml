@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>我的技术博客</title>
+    <link>https://ziwend.github.io/</link>
+    <description>Recent content on 我的技术博客</description>
+    <generator>Hugo -- 0.152.2</generator>
+    <language>zh</language>
+    <lastBuildDate>Fri, 14 Nov 2025 10:08:55 +0800</lastBuildDate>
+    <atom:link href="https://ziwend.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>第一篇博客</title>
+      <link>https://ziwend.github.io/posts/2025-11-14/</link>
+      <pubDate>Fri, 14 Nov 2025 10:08:55 +0800</pubDate>
+      <guid>https://ziwend.github.io/posts/2025-11-14/</guid>
+      <description>&lt;h2 id=&#34;缘起&#34;&gt;缘起&lt;/h2&gt;
+&lt;p&gt;以前在CSDN写博客，后来发现写的博客别人看不了了，原来是在我不知情的情况下被平台设置成了VIP会员可见，于是我就改成了全员可见。本以为这样就可以了，可是又过了一段时间文章又被平台自动设置成了VIP会员可见，没办法，只好放弃使用CSDN写博客了。&lt;/p&gt;
+&lt;p&gt;good good study, day day up&lt;/p&gt;
+&lt;p&gt;加油每一天&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>
