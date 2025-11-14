@@ -27,6 +27,11 @@ jobs:
           hugo-version: " 0.152.2"
           extended: true
 
+      - name: Clean old files
+        run: |
+          rm -rf public/
+          rm -rf resources/
+
       - name: Build
         run: hugo --minify
 
