@@ -19,6 +19,14 @@ theme = "PaperMod"
   page = ["HTML"]
   section = ["HTML", "RSS"]
 
+# 导航栏必须加“search”项，否则搜索不会显示
+[menu]
+  [[menu.main]]
+    identifier = "search"
+    name = "搜索"
+    url = "/search/"
+    weight = 10
+
 # 代码高亮
 [markup]
   [markup.highlight]
