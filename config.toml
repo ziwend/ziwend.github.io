@@ -26,6 +26,8 @@ description = "技术博客"
 keywords = ["Blog", "技术", "程序员"]
 author = "ziwend"
 
+homeInfoParams = {Title = "ZIWEND AI 🧠", Content = "技术博主 / 程序员"}
+
 # 外观
 defaultTheme = "auto"
 disableThemeToggle = false
@@ -49,16 +51,6 @@ findAllMatches = false
 minMatchCharLength = 2
 keys = ["title", "summary", "content"]
 
-# Profile 首页
-[params.profileMode]
-enabled = true
-title = "ZIWEND AI"
-subtitle = "技术博主 / 程序员"
-imageUrl = "https://avatars.githubusercontent.com/u/95949815?v=4"
-
-[[params.profileMode.buttons]]
-name = "文章"
-url = "/posts/"
 
 # 分类页面显示设置
 [params.taxonomy]
