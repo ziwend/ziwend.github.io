@@ -4,57 +4,115 @@ defaultContentLanguage = "zh"
 title = "我的技术博客"
 theme = "PaperMod"
 
+# 每页显示的文章数量（新版写法）
+[pagination]
+pagerSize = 10
+
+enableInlineShortcodes = true
+enableRobotsTXT = true
+
 # 分类和标签配置
 [taxonomies]
-  category = "categories"
-  tag = "tags"
-  series = "series"
+category = "categories"
+tag = "tags"
+series = "series"
 
-# 每页显示的文章数量
-paginate = 10
-
-# 开启目录（TOC）
+# ---------------------------------------------------
+# params（PaperMod 配置）
+# ---------------------------------------------------
 [params]
-  ShowToc = true
-  TocOpen = true
-  
-  # 分类页面显示设置
-  [params.taxonomy]
-    showTermCount = true
-    showTermList = true
+env = "production"
+description = "技术博客"
+keywords = ["Blog", "技术", "程序员"]
+author = "ziwend"
 
-  # 文章页面显示分类和标签
-  [params.article]
-    showCategories = true
-    showTags = true
-    showDate = true
-	
-# —— 站内搜索方案（PaperMod 内置） ——
-# 默认使用 "Fuse.js" 搜索
-  search = true
+# 外观
+defaultTheme = "auto"
+disableThemeToggle = false
 
-# 自动生成搜索 index.json
-[outputs]
-  home = ["HTML", "RSS", "JSON"]
-  page = ["HTML"]
-  section = ["HTML", "RSS"]
-  taxonomy = ["HTML", "RSS"]
-  taxonomyTerm = ["HTML", "RSS"]
-  
-# 导航栏
+# 页面增强功能
+ShowReadingTime = true
+ShowShareButtons = true
+ShowPostNavLinks = true
+ShowBreadCrumbs = true
+ShowCodeCopyButtons = true
+ShowToc = true
+TocOpen = true
+
+# 搜索增强
+[params.fuseOpts]
+isCaseSensitive = false
+includeScore = false
+shouldSort = true
+includeMatches = true
+findAllMatches = false
+minMatchCharLength = 2
+keys = ["title", "summary", "content"]
+
+# Profile 首页
+[params.profileMode]
+enabled = true
+title = "ZIWEND AI"
+subtitle = "技术博主 / 程序员"
+imageUrl = "https://avatars.githubusercontent.com/u/95949815?v=4"
+
+[[params.profileMode.buttons]]
+name = "文章"
+url = "/posts/"
+
+# 分类页面显示设置
+[params.taxonomy]
+showTermCount = true
+showTermList = true
+
+# 文章页面显示分类和标签
+[params.article]
+showCategories = true
+showTags = true
+showDate = true
+
+# ---------------------------------------------------
+# 导航菜单
+# ---------------------------------------------------
 [menu]
-  [[menu.main]]
-    identifier = "categories"
-    name = "分类"
-    url = "/categories/"
-    weight = 5
-  [[menu.main]]
-    identifier = "search"
-    name = "搜索"
-    url = "/search/"
-    weight = 10
 
+[[menu.main]]
+identifier = "posts"
+name = "文章"
+url = "/posts/"
+weight = 1
+
+[[menu.main]]
+identifier = "tags"
+name = "标签"
+url = "/tags/"
+weight = 2
+
+[[menu.main]]
+identifier = "categories"
+name = "分类"
+url = "/categories/"
+weight = 5
+
+[[menu.main]]
+identifier = "search"
+name = "搜索"
+url = "/search/"
+weight = 10
+
+# ---------------------------------------------------
 # 代码高亮
+# ---------------------------------------------------
 [markup]
   [markup.highlight]
-    style = "monokai"
+  style = "monokai"
+
+# ---------------------------------------------------
+# 输出格式（搜索 index.json 必需）
+# ---------------------------------------------------
+[outputs]
+home = ["HTML", "RSS", "JSON"]
+page = ["HTML"]
+section = ["HTML", "RSS"]
+taxonomy = ["HTML", "RSS"]
+
