@@ -26,7 +26,7 @@ description = "技术博客"
 keywords = ["Blog", "技术", "程序员"]
 author = "ziwend"
 
-homeInfoParams = {Title = "ZIWEND AI 🧠", Content = "技术博主 / 程序员"}
+homeInfoParams = {Title = "ZIWEND AI 🧠", Content = "技术博主 / Vibe Coder"}
 
 # 外观
 defaultTheme = "auto"

@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能数独生成器 (规则增强版)</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --primary-color: #2c3e50;
+            --accent-color: #1890ff;
+            --border-color: #000;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 { color: var(--primary-color); margin-bottom: 20px; }
+
+        /* 控制面板 */
+        .controls {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        select, button {
+            padding: 10px 16px;
+            font-size: 16px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        select:hover { border-color: var(--accent-color); }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        button:hover { background-color: #40a9ff; transform: translateY(-1px); }
+        button.print-btn { background-color: #52c41a; }
+        button.print-btn:hover { background-color: #73d13d; }
+
+        /* 游戏区域 */
+        #game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .sudoku-board {
+            display: grid;
+            border: 2px solid var(--border-color);
+            background: var(--border-color);
+            gap: 1px;
+        }
+
+        .cell {
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .cell input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            text-align: center;
+            font-size: inherit;
+            font-weight: inherit;
+            color: var(--accent-color);
+            outline: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+        }
+
+        .cell.fixed { background-color: #fafafa; color: #000; }
+        .cell.invalid { background-color: #fff1f0; }
+        .cell.invalid input { color: #f5222d; }
+
+        .thick-right { border-right: 3px solid #000 !important; }
+        .thick-bottom { border-bottom: 3px solid #000 !important; }
+
+        #print-section { display: none; }
+
+        @media print {
+            body { background: white; padding: 0; margin: 0; }
+            .controls, h1, #game-area { display: none; }
+            
+            #print-section {
+                display: block;
+                width: 100%;
+            }
+
+            .print-page {
+                width: 100%;
+                min-height: 100vh;
+                box-sizing: border-box;
+                padding: 15mm 10mm;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                align-content: start;
+                gap: 20px;
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+
+            .print-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                margin-bottom: 10px;
+                page-break-inside: avoid;
+            }
+
+            .print-title {
+                font-size: 14pt;
+                margin-bottom: 10px;
+                font-family: "KaiTi", "楷体", serif;
+            }
+
+            .sudoku-board {
+                border: 3px solid #000;
+                gap: 0;
+            }
+
+            .cell {
+                border: 1px solid #666;
+                font-size: 18pt;
+                color: #000;
+            }
+            
+            .size-3 .cell { font-size: 22pt; }
+            .size-4 .cell { font-size: 20pt; }
+
+            .cell.fixed { 
+                background-color: #f0f0f0 !important; 
+                -webkit-print-color-adjust: exact; 
+                font-weight: 900;
+            }
+            
+            .cell input { display: none; }
+            .cell { font-size: 0; }
+            .cell::after { 
+                content: attr(data-val); 
+                font-size: 18pt;
+            }
+            .size-3 .cell::after { font-size: 22pt; }
+            .size-4 .cell::after { font-size: 20pt; }
+            
+            .thick-right { border-right: 3px solid #000 !important; }
+            .thick-bottom { border-bottom: 3px solid #000 !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>数独游戏 (3/4/9宫格)</h1>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>类型:</label>
+            <select id="size-select">
+                <option value="3">3宫格 (幼儿启蒙)</option>
+                <option value="4" selected>4宫格 (儿童进阶)</option>
+                <option value="9">9宫格 (标准益智)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>难度:</label>
+            <select id="diff-select">
+                <option value="easy">简单 (多提示)</option>
+                <option value="medium" selected>中等</option>
+                <option value="hard">困难 (少提示)</option>
+            </select>
+        </div>
+
+        <button onclick="initGame()">生成题目</button>
+        <button class="print-btn" onclick="handlePrint()">打印A4练习题</button>
+    </div>
+
+    <div id="game-area">
+        <div id="board" class="sudoku-board"></div>
+    </div>
+
+    <div id="print-section"></div>
+
+    <script>
+        let currentSolution = [];
+        let currentSize = 4;
+        let fourEasyMasks = null;
+        let autoCheckTimer = null;
+
+        // --- 核心算法 ---
+
+        function generateCompleteBoard(size) {
+            if (size === 3) {
+                let board = [[1,2,3], [2,3,1], [3,1,2]];
+                return shuffleLatinSquare(board);
+            }
+
+            let board = Array.from({length: size}, () => Array(size).fill(0));
+            solveBacktrack(board, size);
+            return board;
+        }
+
+        function shuffleLatinSquare(board) {
+            for(let i=0; i<10; i++) {
+                let r1 = Math.floor(Math.random()*3);
+                let r2 = Math.floor(Math.random()*3);
+                [board[r1], board[r2]] = [board[r2], board[r1]];
+            }
+            let map = [1,2,3].sort(() => Math.random() - 0.5);
+            for(let r=0; r<3; r++){
+                for(let c=0; c<3; c++){
+                    let val = board[r][c];
+                    board[r][c] = map[val-1];
+                }
+            }
+            return board;
+        }
+
+        function solveBacktrack(board, size) {
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (board[r][c] === 0) {
+                        let nums = Array.from({length: size}, (_, i) => i + 1);
+                        nums.sort(() => Math.random() - 0.5);
+                        
+                        for (let num of nums) {
+                            if (isValid(board, r, c, num, size)) {
+                                board[r][c] = num;
+                                if (solveBacktrack(board, size)) return true;
+                                board[r][c] = 0;
+                            }
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function isValid(board, row, col, num, size) {
+            for (let i = 0; i < size; i++) {
+                if (board[row][i] === num) return false;
+                if (board[i][col] === num) return false;
+            }
+            if (size === 4 || size === 9) {
+                let boxW = size === 4 ? 2 : 3;
+                let boxH = size === 4 ? 2 : 3;
+                let startR = Math.floor(row / boxH) * boxH;
+                let startC = Math.floor(col / boxW) * boxW;
+                for (let i = 0; i < boxH; i++) {
+                    for (let j = 0; j < boxW; j++) {
+                        if (board[startR + i][startC + j] === num) return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // --- 挖空生成题目 (修复版) ---
+        function createPuzzle(solvedBoard, size, difficulty) {
+            if (size === 3) {
+                // 简单: 每行挖1个 (更多提示)
+                // 中等: 每行优选挖2个，且剩余 3 格数字全部不同（uniqueCount === 3）
+                // 困难: 只保留 3 个数字（位置不限），且这 3 个数字满足 uniqueCount === 2（例如 1,1,2）
+                
+                const holesPerLine = (difficulty === 'easy') ? 1 : (difficulty === 'medium' ? 2 : null);
+                const isHard = (difficulty === 'hard');
+                const isMedium = (difficulty === 'medium');
+                
+                const allPatterns = [
+                    [0, 1, 2], [0, 2, 1],
+                    [1, 0, 2], [1, 2, 0],
+                    [2, 0, 1], [2, 1, 0]
+                ];
+                const shuffled = allPatterns.slice().sort(() => Math.random() - 0.5);
+                // all combinations of 3 cell indices (0..8) for hard mode where preserved 3 cells can be anywhere
+                const allCombos = (function(){
+                    const combos = [];
+                    const indices = Array.from({length:9},(_,i)=>i);
+                    for (let i=0;i<7;i++) for (let j=i+1;j<8;j++) for (let k=j+1;k<9;k++) combos.push([i,j,k]);
+                    return combos;
+                })();
+                const shuffledCombos = allCombos.slice().sort(() => Math.random() - 0.5);
+                
+                let selectedBoard = null;
+                let selectedUniqueCount = 0;
+                
+                const applyPattern = (pattern, holesMode) => {
+                    const candidate = JSON.parse(JSON.stringify(solvedBoard));
+                    const hp = (typeof holesMode !== 'undefined') ? holesMode : holesPerLine;
+                    if (hp === 1) {
+                        for (let r = 0; r < 3; r++) {
+                            candidate[r][pattern[r]] = 0;
+                        }
+                    } else if (hp === 2) {
+                        for (let r = 0; r < 3; r++) {
+                            for (let c = 0; c < 3; c++) {
+                                if (c !== pattern[r]) {
+                                    candidate[r][c] = 0;
+                                }
+                            }
+                        }
+                    } else {
+                        // holesMode === null (no restriction): prefer 2-hole pattern but allow 1-hole fallback
+                        for (let r = 0; r < 3; r++) {
+                            for (let c = 0; c < 3; c++) {
+                                if (c !== pattern[r]) candidate[r][c] = 0;
+                            }
+                        }
+                    }
+                    return candidate;
+                };
+                
+                for (const pattern of shuffled) {
+                    if (holesPerLine === 1) {
+                        selectedBoard = applyPattern(pattern, 1);
+                        break;
+                    } else if (holesPerLine === 2) {
+                        const candidate = applyPattern(pattern, 2);
+                        const uniqueCount = getUniqueNonZeroCount(candidate);
+                        if (isHard && uniqueCount === 2) {
+                            selectedBoard = candidate;
+                            selectedUniqueCount = uniqueCount;
+                            break;
+                        }
+                        if (isMedium && uniqueCount === 3) {
+                            selectedBoard = candidate;
+                            selectedUniqueCount = uniqueCount;
+                            break;
+                        }
+                        if (!isHard && !isMedium) {
+                            selectedBoard = candidate;
+                            selectedUniqueCount = uniqueCount;
+                            break;
+                        }
+                    } else {
+                        // holesPerLine === null -> hard mode: we must preserve exactly 3 cells anywhere
+                        for (const combo of shuffledCombos) {
+                            // build candidate with only these three positions kept
+                            const candidate = Array.from({length:3},(_,r)=>Array(3).fill(0));
+                            for (let idx=0; idx<9; idx++) {
+                                const rr = Math.floor(idx/3), cc = idx%3;
+                                if (combo.includes(idx)) candidate[rr][cc] = solvedBoard[rr][cc];
+                            }
+                            const uniqueCount = getUniqueNonZeroCount(candidate);
+                            if (uniqueCount === 2) {
+                                selectedBoard = candidate;
+                                selectedUniqueCount = uniqueCount;
+                                break;
+                            }
+                        }
+                        if (selectedBoard) break;
+                    }
+                }
+                
+                if (!selectedBoard) {
+                    // fallback: prefer 2-hole pattern when available, otherwise 1-hole
+                    if (holesPerLine === 1) selectedBoard = applyPattern(allPatterns[0], 1);
+                    else if (holesPerLine === 2) selectedBoard = applyPattern(allPatterns[0], 2);
+                    else {
+                        // hard fallback: pick first combo that matches uniqueCount===2
+                        for (const combo of allCombos) {
+                            const candidate = Array.from({length:3},(_,r)=>Array(3).fill(0));
+                            for (let idx=0; idx<9; idx++) {
+                                const rr = Math.floor(idx/3), cc = idx%3;
+                                if (combo.includes(idx)) candidate[rr][cc] = solvedBoard[rr][cc];
+                            }
+                            if (getUniqueNonZeroCount(candidate) === 2) { selectedBoard = candidate; break; }
+                        }
+                        if (!selectedBoard) selectedBoard = applyPattern(allPatterns[0], 2);
+                    }
+                    selectedUniqueCount = getUniqueNonZeroCount(selectedBoard);
+                }
+                
+                // 之前的难度重分类逻辑不再适用（hard 的定义已修改），因此移除。
+                
+                return selectedBoard;
+            }
+            else if (size === 4 && difficulty === 'easy') {
+                return generate4EasyPuzzle(solvedBoard);
+            }
+            else if (size === 4 && (difficulty === 'medium' || difficulty === 'hard')) {
+                return generate4StrongPuzzle(solvedBoard, difficulty);
+            }
+            else {
+                let holesPerLine = 0;
+                
+                if (size === 4) {
+                    if (difficulty === 'medium') holesPerLine = 2;
+                    else holesPerLine = 2;
+                }
+                if (size === 9) {
+                    if (difficulty === 'easy') holesPerLine = 3;
+                    else if (difficulty === 'medium') holesPerLine = 5;
+                    else holesPerLine = 6;
+                }
+                
+                let board = JSON.parse(JSON.stringify(solvedBoard));
+                let toRemove = new Set();
+                
+                for (let r = 0; r < size; r++) {
+                    let availCols = Array.from({length: size}, (_, i) => i);
+                    availCols.sort(() => Math.random() - 0.5);
+                    for (let i = 0; i < holesPerLine; i++) {
+                        toRemove.add(`${r}-${availCols[i]}`);
+                    }
+                }
+                
+                for (let c = 0; c < size; c++) {
+                    let colHoles = 0;
+                    for (let r = 0; r < size; r++) {
+                        if (toRemove.has(`${r}-${c}`)) colHoles++;
+                    }
+                    
+                    while (colHoles < holesPerLine) {
+                        let r = Math.floor(Math.random() * size);
+                        if (!toRemove.has(`${r}-${c}`)) {
+                            toRemove.add(`${r}-${c}`);
+                            colHoles++;
+                        }
+                    }
+                }
+                
+                if (difficulty === 'hard') {
+                    let extraHoles = size === 4 ? 4 : 15;
+                    let attempts = extraHoles * 3;
+                    while (extraHoles > 0 && attempts > 0) {
+                        let r = Math.floor(Math.random() * size);
+                        let c = Math.floor(Math.random() * size);
+                        if (!toRemove.has(`${r}-${c}`) && !wouldViolateConstraints(board, toRemove, size, r, c)) {
+                            toRemove.add(`${r}-${c}`);
+                            extraHoles--;
+                        }
+                        attempts--;
+                    }
+                }
+                
+                for (let key of toRemove) {
+                    let [r, c] = key.split('-').map(Number);
+                    board[r][c] = 0;
+                }
+                
+                return board;
+            }
+        }
+
+        function wouldViolateConstraints(board, toRemove, size, newR, newC) {
+            let tempRemove = new Set(toRemove);
+            tempRemove.add(`${newR}-${newC}`);
+            
+            let rowEmpty = true;
+            for (let c = 0; c < size; c++) {
+                if (!tempRemove.has(`${newR}-${c}`)) {
+                    rowEmpty = false;
+                    break;
+                }
+            }
+            if (rowEmpty) return true;
+            
+            let colEmpty = true;
+            for (let r = 0; r < size; r++) {
+                if (!tempRemove.has(`${r}-${newC}`)) {
+                    colEmpty = false;
+                    break;
+                }
+            }
+            if (colEmpty) return true;
+            
+            return false;
+        }
+        
+        function passes4EasyConstraint(rowHoles, colHoles, boxHoles) {
+            let linesWithThree = 0;
+            for (let i = 0; i < rowHoles.length; i++) {
+                if (rowHoles[i] === 1) linesWithThree++;
+            }
+            for (let i = 0; i < colHoles.length; i++) {
+                if (colHoles[i] === 1) linesWithThree++;
+            }
+            
+            let boxesWithThree = 0;
+            for (let i = 0; i < boxHoles.length; i++) {
+                if (boxHoles[i] === 1) boxesWithThree++;
+            }
+            
+            if (linesWithThree > 1 || boxesWithThree > 1) return false;
+            if (linesWithThree >= 1 && boxesWithThree >= 1) return false;
+            return true;
+        }
+        
+        function get4EasyMasks() {
+            if (fourEasyMasks) return fourEasyMasks;
+            
+            const masks = [];
+            const total = 16;
+            
+            for (let mask = 0; mask < (1 << total); mask++) {
+                const emptyCount = countBits(mask);
+                // easy 保持一个合理的空格区间（可调整），这里用 5..10
+                if (emptyCount < 5 || emptyCount > 10) continue;
+
+                const rowEmpty = Array(4).fill(0);
+                const colEmpty = Array(4).fill(0);
+                const boxEmpty = Array(4).fill(0);
+
+                for (let idx = 0; idx < total; idx++) {
+                    if ((mask & (1 << idx)) === 0) continue;
+                    const r = Math.floor(idx / 4);
+                    const c = idx % 4;
+                    rowEmpty[r]++;
+                    colEmpty[c]++;
+                    const boxIdx = Math.floor(r / 2) * 2 + Math.floor(c / 2);
+                    boxEmpty[boxIdx]++;
+                }
+
+                // 计算每行/列/宫的已填数量
+                const rowFilled = rowEmpty.map(e => 4 - e);
+                const colFilled = colEmpty.map(e => 4 - e);
+                const boxFilled = boxEmpty.map(e => 4 - e);
+
+                // easy 规则: 只有一条线（行或列）或者只有一个子宫格 有 3 个已填数字
+                // 且 任意一条线 与 任意子宫格 不能同时存在 3 个数字
+                let linesWithThree = 0;
+                for (let i = 0; i < 4; i++) {
+                    if (rowFilled[i] === 3) linesWithThree++;
+                    if (colFilled[i] === 3) linesWithThree++;
+                }
+                let boxesWithThree = 0;
+                for (let i = 0; i < 4; i++) {
+                    if (boxFilled[i] === 3) boxesWithThree++;
+                }
+
+                // 不允许任何行/列/宫已填为 4 个
+                let anyFull = false;
+                for (let i = 0; i < 4; i++) {
+                    if (rowFilled[i] === 4 || colFilled[i] === 4 || boxFilled[i] === 4) { anyFull = true; break; }
+                }
+                if (anyFull) continue;
+
+                // 必须且仅能有一个（行/列 或 子宫格）包含 3 个已填数字
+                if ((linesWithThree + boxesWithThree) !== 1) continue;
+
+                // 其他行/列/宫已填数不能大于 3（理论上不会），允许全空（filled==0）
+                const coords = [];
+                for (let idx = 0; idx < total; idx++) {
+                    if ((mask & (1 << idx)) !== 0) {
+                        coords.push([Math.floor(idx / 4), idx % 4]);
+                    }
+                }
+                masks.push(coords);
+            }
+            
+            fourEasyMasks = masks;
+            return masks;
+        }
+        
+        function countBits(num) {
+            let n = num;
+            let count = 0;
+            while (n) {
+                count += n & 1;
+                n >>= 1;
+            }
+            return count;
+        }
+
+        // --- 解的计数与唯一性检测（用于保证 puzzle 只有唯一解） ---
+        function possibleCandidates(board, row, col, size) {
+            const candidates = [];
+            for (let num = 1; num <= size; num++) {
+                if (isValid(board, row, col, num, size)) candidates.push(num);
+            }
+            return candidates;
+        }
+
+        function findEmptyWithFewestCandidates(board, size) {
+            let best = null;
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (board[r][c] === 0) {
+                        const cand = possibleCandidates(board, r, c, size);
+                        if (cand.length === 0) return {r, c, cand};
+                        if (!best || cand.length < best.cand.length) best = {r, c, cand};
+                    }
+                }
+            }
+            return best;
+        }
+
+        function countSolutions(board, size, limit=2) {
+            // DFS with MRV heuristic, early exit when count >= limit
+            let count = 0;
+
+            function dfs(b) {
+                if (count >= limit) return;
+                const cell = findEmptyWithFewestCandidates(b, size);
+                if (!cell) { // no empty -> found one solution
+                    count++;
+                    return;
+                }
+                const {r, c, cand} = cell;
+                if (!cand || cand.length === 0) return; // dead end
+                for (let num of cand) {
+                    b[r][c] = num;
+                    dfs(b);
+                    b[r][c] = 0;
+                    if (count >= limit) return;
+                }
+            }
+
+            const copy = JSON.parse(JSON.stringify(board));
+            dfs(copy);
+            return count;
+        }
+
+        // 检查是否所有可填格都已填（不立即触发 check），返回 true/false
+        function autoCheckIfComplete() {
+            const boardEl = document.getElementById('board');
+            const cells = boardEl && boardEl.children;
+            if (!cells || cells.length === 0) return false;
+
+            for (let i = 0; i < cells.length; i++) {
+                const cell = cells[i];
+                if (cell.classList.contains('fixed')) continue;
+                const input = cell.querySelector('input');
+                if (!input) return false; // interactive not ready
+                if (!input.value || input.value.toString().trim() === '') return false; // still empty
+            }
+
+            return true;
+        }
+
+        // 带延迟的调度，避免在输入渲染前触发检查（防止提示过早）
+        function scheduleAutoCheck(delay = 60) {
+            if (autoCheckTimer) clearTimeout(autoCheckTimer);
+            autoCheckTimer = setTimeout(() => {
+                autoCheckTimer = null;
+                if (autoCheckIfComplete()) checkGame();
+            }, delay);
+        }
+        
+        function generate4EasyPuzzle(solvedBoard) {
+            const masks = get4EasyMasks();
+            if (!masks.length) return JSON.parse(JSON.stringify(solvedBoard));
+
+            // 尝试不同的完整解 + 掩码组合，优先返回第一个唯一解（attempts 上限避免卡住）
+            const maxAttempts = 40;
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                // 尝试第一次使用传入的 solvedBoard，后续尝试生成新的完整解
+                const baseSolution = (attempt === 0) ? JSON.parse(JSON.stringify(solvedBoard)) : generateCompleteBoard(4);
+
+                const shuffledMasks = masks.slice().sort(() => Math.random() - 0.5);
+                for (const pattern of shuffledMasks) {
+                    const board = JSON.parse(JSON.stringify(baseSolution));
+                    for (const [r, c] of pattern) board[r][c] = 0;
+                    const sols = countSolutions(board, 4, 2);
+                    if (sols === 1) return board;
+                }
+            }
+
+            // 若多次尝试仍未找到唯一解，退回到随机掩码（与之前行为一致）
+            const fallback = JSON.parse(JSON.stringify(solvedBoard));
+            const pat = masks[Math.floor(Math.random() * masks.length)];
+            for (const [r, c] of pat) fallback[r][c] = 0;
+            return fallback;
+        }
+
+        // --- 4x4 强约束掘题（用于中等/困难） ---
+        const fourStrongMasksCache = {};
+
+        function get4StrongMasks(minEmpty, maxEmpty, enforceMaxTwo) {
+            const key = `${minEmpty}-${maxEmpty}-${enforceMaxTwo?1:0}`;
+            if (fourStrongMasksCache[key]) return fourStrongMasksCache[key];
+
+            const masks = [];
+            const total = 16;
+
+            for (let mask = 0; mask < (1 << total); mask++) {
+                const emptyCount = countBits(mask);
+                if (emptyCount < minEmpty || emptyCount > maxEmpty) continue;
+
+                const rowEmpty = Array(4).fill(0);
+                const colEmpty = Array(4).fill(0);
+                const boxEmpty = Array(4).fill(0);
+
+                for (let idx = 0; idx < total; idx++) {
+                    if ((mask & (1 << idx)) === 0) continue;
+                    const r = Math.floor(idx / 4);
+                    const c = idx % 4;
+                    rowEmpty[r]++;
+                    colEmpty[c]++;
+                    const boxIdx = Math.floor(r / 2) * 2 + Math.floor(c / 2);
+                    boxEmpty[boxIdx]++;
+                }
+
+                let valid = true;
+                // 如果 enforceMaxTwo 为 true，则每行/列/宫 的已填数必须 <= 2
+                if (enforceMaxTwo) {
+                    for (let i = 0; i < 4; i++) {
+                        if (rowEmpty[i] < 2) { valid = false; break; } // filled > 2
+                        if (colEmpty[i] < 2) { valid = false; break; }
+                        if (boxEmpty[i] < 2) { valid = false; break; }
+                    }
+                    if (!valid) continue;
+                } else {
+                    // 默认强约束：仅禁止已填为4（即 empty === 0），允许 empty === 4（全空）
+                    for (let i = 0; i < 4; i++) {
+                        if (rowEmpty[i] === 0 || colEmpty[i] === 0) { valid = false; break; }
+                    }
+                    if (!valid) continue;
+                    for (let i = 0; i < 4; i++) {
+                        if (boxEmpty[i] === 0) { valid = false; break; }
+                    }
+                    if (!valid) continue;
+                }
+
+                const coords = [];
+                for (let idx = 0; idx < total; idx++) {
+                    if ((mask & (1 << idx)) !== 0) {
+                        coords.push([Math.floor(idx / 4), idx % 4]);
+                    }
+                }
+                masks.push(coords);
+            }
+
+            fourStrongMasksCache[key] = masks;
+            return masks;
+        }
+
+        function generate4StrongPuzzle(solvedBoard, difficulty) {
+            // 中等：空格最多10个（<=10）; 困难：空格至少11个 (>=11)
+            const maxEmpty = (difficulty === 'medium') ? 10 : 16;
+            const minEmpty = (difficulty === 'hard') ? 11 : 0;
+
+            // 对 medium / hard 启用 "每行/列/宫 已填 <= 2" 的约束
+            const enforceMaxTwo = (difficulty === 'medium' || difficulty === 'hard');
+
+            const masks = get4StrongMasks(minEmpty, maxEmpty, enforceMaxTwo);
+            if (!masks || !masks.length) return JSON.parse(JSON.stringify(solvedBoard));
+
+            const maxAttempts = 40;
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const baseSolution = (attempt === 0) ? JSON.parse(JSON.stringify(solvedBoard)) : generateCompleteBoard(4);
+                const shuffledMasks = masks.slice().sort(() => Math.random() - 0.5);
+                for (const pattern of shuffledMasks) {
+                    const board = JSON.parse(JSON.stringify(baseSolution));
+                    for (const [r, c] of pattern) board[r][c] = 0;
+                    const sols = countSolutions(board, 4, 2);
+                    if (sols === 1) return board;
+                }
+            }
+
+            // fallback: return first mask applied to original solvedBoard
+            const pat = masks[0];
+            const fallback = JSON.parse(JSON.stringify(solvedBoard));
+            for (const [r, c] of pat) fallback[r][c] = 0;
+            return fallback;
+        }
+
+        // --- 渲染与交互 ---
+
+        function initGame() {
+            const size = parseInt(document.getElementById('size-select').value);
+            const difficulty = document.getElementById('diff-select').value;
+            currentSize = size;
+            
+            const solution = generateCompleteBoard(size);
+            currentSolution = solution;
+            const puzzle = createPuzzle(solution, size, difficulty);
+            
+            if (puzzle && puzzle._forceDifficulty === 'hard' && difficulty === 'medium') {
+                document.getElementById('diff-select').value = 'hard';
+                alert('该题目存在多解, 已归入困难模式');
+            }
+            
+            renderBoard(puzzle, size, 'board', true);
+        }
+
+        function renderBoard(grid, size, containerId, interactive) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            container.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+            
+            let cellSize = size === 9 ? '40px' : (size === 4 ? '70px' : '90px');
+            if (!interactive) {
+                cellSize = size === 9 ? '32px' : (size === 4 ? '50px' : '55px');
+            }
+
+            let boxW = size === 9 ? 3 : (size === 4 ? 2 : 0);
+            let boxH = size === 9 ? 3 : (size === 4 ? 2 : 0);
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (size === 3 || size === 4) cell.classList.add(`size-${size}`);
+                    
+                    cell.style.width = cellSize;
+                    cell.style.height = cellSize;
+
+                    if (boxW > 0) {
+                        if ((c + 1) % boxW === 0 && c !== size - 1) cell.classList.add('thick-right');
+                        if ((r + 1) % boxH === 0 && r !== size - 1) cell.classList.add('thick-bottom');
+                    }
+
+                    const val = grid[r][c];
+                    if (val !== 0) {
+                        cell.classList.add('fixed');
+                        cell.innerText = val;
+                        cell.setAttribute('data-val', val);
+                    } else if (interactive) {
+                        const input = document.createElement('input');
+                        input.type = 'number';
+                        input.pattern = '[0-9]*';
+                        input.maxLength = 1;
+                        input.oninput = (e) => {
+                            if(e.target.value.length > 1) e.target.value = e.target.value.slice(0,1);
+                            e.target.parentNode.classList.remove('invalid');
+                            // 延迟检查，避免在输入尚未渲染到 UI 前触发提示
+                            scheduleAutoCheck();
+                        };
+                        cell.appendChild(input);
+                    } else {
+                        cell.setAttribute('data-val', '');
+                    }
+                    container.appendChild(cell);
+                }
+            }
+        }
+
+        function checkGame() {
+            const boardEl = document.getElementById('board');
+            const cells = boardEl.children;
+            if (!cells.length) return;
+
+            const size = currentSize;
+            const board = Array.from({length: size}, () => Array(size).fill(0));
+            const fixedMap = Array.from({length: size}, () => Array(size).fill(false));
+            const invalidPos = new Set();
+
+            let index = 0;
+            let allFilled = true;
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const cell = cells[index];
+                    if (cell.classList.contains('fixed')) {
+                        const fixedVal = parseInt(cell.getAttribute('data-val') || cell.innerText, 10);
+                        board[r][c] = fixedVal;
+                        fixedMap[r][c] = true;
+                    } else {
+                        const input = cell.querySelector('input');
+                        const val = parseInt(input.value, 10);
+                        if (Number.isNaN(val)) {
+                            board[r][c] = 0;
+                            allFilled = false;
+                        } else if (val < 1 || val > size) {
+                            board[r][c] = 0;
+                            invalidPos.add(`${r}-${c}`);
+                            allFilled = false;
+                        } else {
+                            board[r][c] = val;
+                        }
+                    }
+                    index++;
+                }
+            }
+
+            const markDuplicates = (positions) => {
+                for (const pos of positions) {
+                    const [r, c] = pos.split('-').map(Number);
+                    if (!fixedMap[r][c]) invalidPos.add(pos);
+                }
+            };
+
+            // Row validation
+            for (let r = 0; r < size; r++) {
+                const map = {};
+                for (let c = 0; c < size; c++) {
+                    const val = board[r][c];
+                    if (val === 0) continue;
+                    if (!map[val]) map[val] = [];
+                    map[val].push(`${r}-${c}`);
+                }
+                for (const key in map) {
+                    if (map[key].length > 1) markDuplicates(map[key]);
+                }
+            }
+
+            // Column validation
+            for (let c = 0; c < size; c++) {
+                const map = {};
+                for (let r = 0; r < size; r++) {
+                    const val = board[r][c];
+                    if (val === 0) continue;
+                    if (!map[val]) map[val] = [];
+                    map[val].push(`${r}-${c}`);
+                }
+                for (const key in map) {
+                    if (map[key].length > 1) markDuplicates(map[key]);
+                }
+            }
+
+            // Box validation for 4x4 / 9x9
+            if (size === 4 || size === 9) {
+                const boxSize = size === 4 ? 2 : 3;
+                for (let startR = 0; startR < size; startR += boxSize) {
+                    for (let startC = 0; startC < size; startC += boxSize) {
+                        const map = {};
+                        for (let r = startR; r < startR + boxSize; r++) {
+                            for (let c = startC; c < startC + boxSize; c++) {
+                                const val = board[r][c];
+                                if (val === 0) continue;
+                                if (!map[val]) map[val] = [];
+                                map[val].push(`${r}-${c}`);
+                            }
+                        }
+                        for (const key in map) {
+                            if (map[key].length > 1) markDuplicates(map[key]);
+                        }
+                    }
+                }
+            }
+
+            // Update UI
+            index = 0;
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const cell = cells[index];
+                    if (!cell.classList.contains('fixed')) {
+                        if (invalidPos.has(`${r}-${c}`)) {
+                            cell.classList.add('invalid');
+                        } else {
+                            cell.classList.remove('invalid');
+                        }
+                    }
+                    index++;
+                }
+            }
+
+            if (allFilled && invalidPos.size === 0) {
+                alert('恭喜!答案正确!');
+            }
+        }
+
+        // --- 打印逻辑 (穷举不重复版) ---
+
+        function handlePrint() {
+            const size = parseInt(document.getElementById('size-select').value);
+            const difficulty = document.getElementById('diff-select').value;
+            const printSection = document.getElementById('print-section');
+            printSection.innerHTML = '';
+
+            const solution = generateCompleteBoard(size);
+            const puzzles = generateAllUniquePuzzles(solution, size, difficulty, 100);
+            
+            if (puzzles.length === 0) {
+                alert('生成题目失败,请重试');
+                return;
+            }
+
+            let itemsPerPage;
+            if (size === 3) itemsPerPage = 12;
+            if (size === 4) itemsPerPage = 12;
+            if (size === 9) itemsPerPage = 6;
+
+            const totalPages = Math.ceil(puzzles.length / itemsPerPage);
+            
+            for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+                const page = document.createElement('div');
+                page.className = 'print-page';
+                
+                if (size === 3) {
+                    page.style.gridTemplateColumns = '1fr 1fr 1fr 1fr'; // 4列
+                    page.style.gap = '15px';
+                } else if (size === 4) {
+                    page.style.gridTemplateColumns = '1fr 1fr 1fr'; // 3列
+                    page.style.gap = '20px';
+                } else if (size === 9) {
+                    page.style.gridTemplateColumns = '1fr 1fr'; // 2列
+                    page.style.gap = '25px';
+                }
+
+                const startIdx = pageIdx * itemsPerPage;
+                const endIdx = Math.min(startIdx + itemsPerPage, puzzles.length);
+
+                for (let i = startIdx; i < endIdx; i++) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'print-item';
+
+                    const boardDiv = document.createElement('div');
+                    boardDiv.className = 'sudoku-board';
+                    boardDiv.id = `p-board-${i}`;
+                    wrapper.appendChild(boardDiv);
+                    
+                    page.appendChild(wrapper);
+                }
+                
+                printSection.appendChild(page);
+            }
+
+            for(let i = 0; i < puzzles.length; i++) {
+                renderBoard(puzzles[i], size, `p-board-${i}`, false);
+            }
+
+            alert(`已生成 ${puzzles.length} 个不重复题目,共 ${totalPages} 页`);
+            window.print();
+        }
+
+        // 生成所有本质不同的3x3 Latin Square
+        function generateAll3x3LatinSquares() {
+            // 标准化的12种3x3 Latin Square
+            return [
+                [[1,2,3],[2,3,1],[3,1,2]],
+                [[1,2,3],[3,1,2],[2,3,1]],
+                [[1,3,2],[2,1,3],[3,2,1]],
+                [[1,3,2],[3,2,1],[2,1,3]],
+                [[2,1,3],[1,3,2],[3,2,1]],
+                [[2,1,3],[3,2,1],[1,3,2]],
+                [[2,3,1],[1,2,3],[3,1,2]],
+                [[2,3,1],[3,1,2],[1,2,3]],
+                [[3,1,2],[1,2,3],[2,3,1]],
+                [[3,1,2],[2,3,1],[1,2,3]],
+                [[3,2,1],[1,3,2],[2,1,3]],
+                [[3,2,1],[2,1,3],[1,3,2]]
+            ];
+        }
+
+        function generateAllUniquePuzzles(solution, size, difficulty, maxCount) {
+            const puzzles = [];
+            const seen = new Set();
+            
+            if (size === 3) {
+                const holesPerLine = (difficulty === 'easy') ? 1 : (difficulty === 'medium' ? 2 : null);
+                const isHard = (difficulty === 'hard');
+                const isMedium = (difficulty === 'medium');
+                
+                const holePatterns = [[0,1,2], [0,2,1], [1,0,2], [1,2,0], [2,0,1], [2,1,0]];
+                const allCombos = (function(){
+                    const combos = [];
+                    for (let i=0;i<7;i++) for (let j=i+1;j<8;j++) for (let k=j+1;k<9;k++) combos.push([i,j,k]);
+                    return combos;
+                })();
+                const shuffledCombos = allCombos.slice().sort(() => Math.random() - 0.5);
+                const allSquares = generateAll3x3LatinSquares();
+                
+                const processBoard = (board) => {
+                    if (isMedium || isHard) {
+                        const uniqueCount = getUniqueNonZeroCount(board);
+                        // medium: 要求剩余3格数字全不同 -> uniqueCount === 3
+                        if (isMedium && uniqueCount !== 3) return;
+                        // hard: 要求剩余3格数字既不全相同也不全不同 -> uniqueCount === 2
+                        if (isHard && uniqueCount !== 2) return;
+                    }
+                    const hash = getBoardHash(board);
+                    if (!seen.has(hash)) {
+                        seen.add(hash);
+                        puzzles.push(board);
+                    }
+                };
+                
+                for (let square of allSquares) {
+                    if (puzzles.length >= maxCount) break;
+                    
+                    for (let pattern of holePatterns) {
+                        if (puzzles.length >= maxCount) break;
+                        
+                        let board = JSON.parse(JSON.stringify(square));
+                        
+                        if (holesPerLine === 1) {
+                            for (let r = 0; r < 3; r++) {
+                                board[r][pattern[r]] = 0;
+                            }
+                            processBoard(board);
+                        } else if (holesPerLine === 2) {
+                            for (let r = 0; r < 3; r++) {
+                                for (let c = 0; c < 3; c++) {
+                                    if (c !== pattern[r]) {
+                                        board[r][c] = 0;
+                                    }
+                                }
+                            }
+                            processBoard(board);
+                        } else {
+                            // hard: preserve exactly 3 cells anywhere (use combos)
+                            for (const combo of shuffledCombos) {
+                                let b = Array.from({length:3},()=>Array(3).fill(0));
+                                for (let idx=0; idx<9; idx++) {
+                                    const rr = Math.floor(idx/3), cc = idx%3;
+                                    if (combo.includes(idx)) b[rr][cc] = square[rr][cc];
+                                }
+                                processBoard(b);
+                                if (puzzles.length >= maxCount) break;
+                            }
+                        }
+                    }
+                }
+                
+                if (puzzles.length < maxCount) {
+                    let attempts = 0;
+                    const maxAttempts = (maxCount - puzzles.length) * 10;
+                    
+                    while (puzzles.length < maxCount && attempts < maxAttempts) {
+                        const newSolution = generateCompleteBoard(3);
+                        
+                        if (holesPerLine === 1 || holesPerLine === 2) {
+                            for (let pattern of holePatterns) {
+                                if (puzzles.length >= maxCount) break;
+                                let board = JSON.parse(JSON.stringify(newSolution));
+                                if (holesPerLine === 1) {
+                                    for (let r = 0; r < 3; r++) board[r][pattern[r]] = 0;
+                                } else {
+                                    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (c !== pattern[r]) board[r][c] = 0;
+                                }
+                                processBoard(board);
+                            }
+                        } else {
+                            // hard: try all 3-cell combos
+                            for (const combo of shuffledCombos) {
+                                if (puzzles.length >= maxCount) break;
+                                let b = Array.from({length:3},()=>Array(3).fill(0));
+                                for (let idx=0; idx<9; idx++) {
+                                    const rr = Math.floor(idx/3), cc = idx%3;
+                                    if (combo.includes(idx)) b[rr][cc] = newSolution[rr][cc];
+                                }
+                                processBoard(b);
+                            }
+                        }
+                        attempts++;
+                    }
+                }
+            } 
+            else if (size === 4 || size === 9) {
+                let attempts = maxCount * 50;
+                
+                while (puzzles.length < maxCount && attempts > 0) {
+                    const puzzle = createPuzzle(solution, size, difficulty);
+                    const hash = getBoardHash(puzzle);
+                    
+                    if (!seen.has(hash)) {
+                        seen.add(hash);
+                        puzzles.push(puzzle);
+                    }
+                    attempts--;
+                }
+                
+                if (puzzles.length < 20 && attempts === 0) {
+                    console.warn('题目生成较少,可能存在重复模式');
+                }
+            }
+            
+            // 如果为 3x3 的 hard 模式仍未生成题目，使用随机化回退搜索以提高命中率
+            if (size === 3 && difficulty === 'hard' && puzzles.length === 0) {
+                const combos = (function(){ const c=[]; for (let i=0;i<7;i++) for (let j=i+1;j<8;j++) for (let k=j+1;k<9;k++) c.push([i,j,k]); return c; })();
+                let attempts = 0;
+                const maxAttempts = 2000;
+                while (puzzles.length < Math.min(maxCount, 30) && attempts < maxAttempts) {
+                    const sol = generateCompleteBoard(3);
+                    const combo = combos[Math.floor(Math.random()*combos.length)];
+                    let b = Array.from({length:3},()=>Array(3).fill(0));
+                    for (let idx=0; idx<9; idx++) {
+                        const rr = Math.floor(idx/3), cc = idx%3;
+                        if (combo.includes(idx)) b[rr][cc] = sol[rr][cc];
+                    }
+                    if (getUniqueNonZeroCount(b) === 2) {
+                        const hash = getBoardHash(b);
+                        if (!seen.has(hash)) { seen.add(hash); puzzles.push(b); }
+                    }
+                    attempts++;
+                }
+            }
+
+            return puzzles;
+        }
+
+        function getBoardHash(board) {
+            return board.map(row => row.join(',')).join(';');
+        }
+        
+        function getUniqueNonZeroCount(board) {
+            const set = new Set();
+            for (let r = 0; r < board.length; r++) {
+                for (let c = 0; c < board[r].length; c++) {
+                    const val = board[r][c];
+                    if (val !== 0) set.add(val);
+                }
+            }
+            return set.size;
+        }
+
+        initGame();
+
+    </script>
+</body>
+</html>
