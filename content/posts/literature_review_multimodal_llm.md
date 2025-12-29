@@ -1,8 +1,8 @@
 +++
-date = '2025-12-29T17:31:30+08:00'
-toc = true
+date = '2025-12-29T13:41:19+08:00'
 draft = false
-title = '世界模型知识点'
+title = 'Literature_review_multimodal_llm'
+toc = true
 categories = ["笔记"]
 tags = ["世界模型"]
 +++

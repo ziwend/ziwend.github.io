@@ -1,0 +1,52 @@
+/* ===============================
+   PaperMod 技术博客 · 最终推荐布局
+   =============================== */
+
+/* 桌面端：右侧固定 TOC */
+@media (min-width: 1024px) {
+
+  /* 保持页面居中 */
+  .main {
+    max-width: 1100px;
+    margin: auto;
+  }
+
+  /* 正文宽度 */
+  .post-content {
+    max-width: 900px;
+  }
+
+  /* TOC 右侧固定，不影响居中 */
+  .toc {
+    position: fixed;
+    top: 120px;
+    right: 32px;
+    width: 260px;
+    max-height: 70vh;
+    overflow-y: auto;
+
+    padding-left: 16px;
+    border-left: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+}
+
+
+/* 移动端：恢复默认（顶部 TOC） */
+@media (max-width: 1023px) {
+  .main {
+    margin-right: auto;
+  }
+
+  .toc {
+    position: static;
+    width: auto;
+    border-left: none;
+    padding-left: 0;
+  }
+}
+
+/* 代码块不被压缩 */
+.post-content pre {
+  max-width: 100%;
+}
